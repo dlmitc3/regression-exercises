@@ -9,7 +9,15 @@ from acquire import acquire_zillow
 ###################### Prep Zillow Data ######################
 
 def wrangle_zillow(df):
-    
+     '''
+    SQL Zillow data base information into a pandas DataFrame,
+    created df1 file with only columns requested, replace whitespaces with NaN values,
+    drop any rows with Null values, convert all columns to int64,
+    return cleaned data to DataFrame.
+    '''
+    # Acquire data from csv file.
+    df = acquire.acquire_zillow()
+
     # show only data from the selected columns
     df1 = df[['bedroomcnt', 'bathroomcnt', 'calculatedfinishedsquarefeet', 'taxvaluedollarcnt', 'yearbuilt', 'taxamount', 'fips']]
      
