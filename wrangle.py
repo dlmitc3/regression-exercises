@@ -25,13 +25,13 @@ def wrangle_zillow(df):
     df.describe().T
 
     # Replace a whitespace sequence or empty with a NaN value and reassign this manipulation to df1.
-    df = df.replace(r'^\s*$', np.nan, regex=True)
+    df = df1.replace(r'^\s*$', np.nan, regex=True)
 
     # Drop all rows with any Null values, assign to df1, and verify.
-    df = df.dropna()
+    df = df1.dropna()
 
     # Change all column data tyes to int64, reassign to df1, and verify.
-    df = df.astype('int')
+    df = df1.astype('int')
 
     df.describe().T
 
