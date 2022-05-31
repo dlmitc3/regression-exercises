@@ -71,5 +71,5 @@ def acquire_zillow(use_cache = True):
     # Creating csv file
     zillow_df.to_csv('zillow.csv', index=False)
     # Return the df
-    return zillow_df
+    return acquire_zillow
 
