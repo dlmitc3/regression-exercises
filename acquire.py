@@ -1,28 +1,75 @@
-import pandas as pd
 import os
-from env import host, user, password
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+
+from env import user, host, password
 
 
+#---------------Acquisition
 
-def get_connection(db, user=user, host=host, password=password):
+def get_db_url(db_name, username=user, hostname=host, password=password):
     '''
-    This function uses my info from my env file to
-    create a connection url to access the Codeup db.
-    It takes in a string name of a database as an argument.
+    This function requires a database name (db_name) and uses the imported username,
+    hostname, and password from an env file.
+    A url string is returned using the format required to connect to a SQL server.
     '''
-    return f'mysql+pymysql://{user}:{password}@{host}/{db}'
+    url = f'mysql+pymysql://{username}:{password}@{host}/{db_name}'
+    return url
 
-###################### Acquire Zillow Data ######################
 
-def new_wrangle_data():
+# The query needed to acquire the desired zillow data from the SQL server
+# Currently creates duplicates on parcelid
+query = '''
+SELECT  prop.*,
+        predictions_2017.logerror, 
+        predictions_2017.transactiondate,
+        air_cond.airconditioningdesc,
+        architecture.architecturalstyledesc,
+        building_class.buildingclassdesc,
+        heating.heatingorsystemdesc,
+        landuse.propertylandusedesc,
+        story.storydesc,
+        construct.typeconstructiondesc
+FROM properties_2017 prop
+    JOIN (
+        SELECT parcelid, Max(transactiondate) AS max_transactiondate
+            FROM predictions_2017
+            GROUP BY parcelid) pred
+            USING (parcelid)
+JOIN predictions_2017 ON pred.parcelid = predictions_2017.parcelid
+                      AND pred.max_transactiondate = predictions_2017.transactiondate
+LEFT JOIN airconditioningtype air_cond USING (airconditioningtypeid)
+LEFT JOIN architecturalstyletype architecture USING (architecturalstyletypeid)
+LEFT JOIN buildingclasstype building_class USING (buildingclasstypeid)
+LEFT JOIN heatingorsystemtype heating USING (heatingorsystemtypeid)
+LEFT JOIN propertylandusetype landuse USING (propertylandusetypeid)
+LEFT JOIN storytype story USING (storytypeid)
+LEFT JOIN typeconstructiontype construct USING (typeconstructiontypeid)
+WHERE prop.latitude IS NOT NULL
+        AND prop.longitude IS NOT NULL
+        AND transactiondate <= '2017-12-31'
+'''
+
+
+# Acquire zillow data
+def acquire_zillow(use_cache = True):
     '''
-    This function reads the Zillow data from the Zillow.csv file..
+    This function uses our above query to interact with SQL server and obtain zillow data (acquire)
     '''
-    sql_query = """
-                SELECT * from properties_2017
-                """
-    
-    # Read in DataFrame from Codeup db.
-    df = pd.read_sql(sql_query, get_connection('zillow'))
-    df.to_csv('zillow_df.csv')
-    return df
+    # Checking to see if data already exists in local csv file
+    if os.path.exists('zillow.csv') and use_cache:
+        print('Using cached csv')
+        return pd.read_csv('zillow.csv')
+    # If data is not local we will acquire it from SQL server
+    zillow_df = pd.read_sql(query, get_db_url('zillow'))
+    # Creating csv file
+    zillow_df.to_csv('zillow.csv', index=False)
+    # Return the df
+    return zillow_df
+
