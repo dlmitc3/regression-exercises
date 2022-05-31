@@ -19,20 +19,20 @@ def wrangle_zillow(df):
     df = acquire.acquire_zillow()
 
     # show only data from the selected columns
-    df1 = df[['bedroomcnt', 'bathroomcnt', 'calculatedfinishedsquarefeet', 'taxvaluedollarcnt', 'yearbuilt', 'taxamount', 'fips']]
+    df = df[['bedroomcnt', 'bathroomcnt', 'calculatedfinishedsquarefeet', 'taxvaluedollarcnt', 'yearbuilt', 'taxamount', 'fips']]
      
     # Display readable summary statistics for numeric columns.
-    df1.describe().T
+    df.describe().T
 
     # Replace a whitespace sequence or empty with a NaN value and reassign this manipulation to df1.
-    df1 = df1.replace(r'^\s*$', np.nan, regex=True)
+    df = df.replace(r'^\s*$', np.nan, regex=True)
 
     # Drop all rows with any Null values, assign to df1, and verify.
-    df1 = df1.dropna()
+    df = df.dropna()
 
     # Change all column data tyes to int64, reassign to df1, and verify.
-    df1 = df1.astype('int')
+    df = df.astype('int')
 
-    df1.describe().T
+    df.describe().T
 
-     return df1
+    return df
