@@ -55,7 +55,7 @@ def acquire_zillow_data(use_cache= True):
     # Creation of csv file
     df.to_csv('zillow.csv', index=False)
     # Returns the dataframe
-    return df
+    return
 
 
 # Preparation and Splitting
