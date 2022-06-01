@@ -12,7 +12,6 @@ from sklearn.model_selection import train_test_split
 # Imputer
 from sklearn.impute import SimpleImputer
 
-###################### Zillow Original Data ######################
 
 # Acquire Functions
 
@@ -55,7 +54,7 @@ def acquire_zillow_data(use_cache= True):
     # Creation of csv file
     df.to_csv('zillow.csv', index=False)
     # Returns the dataframe
-    return
+    return df
 
 
 # Preparation and Splitting
