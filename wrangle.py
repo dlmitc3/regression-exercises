@@ -24,20 +24,16 @@ def get_db_url(db_name, username=user, hostname=host, password=password):
     url = f'mysql+pymysql://{username}:{password}@{host}/{db_name}'
     return url
 
-
 def acquire_zillow_data(use_cache= True):
     '''
     Acquire the zillow data using SQL query and get_db_url() with credentials from env.py
     '''
-    # Checking to see if data already exists in local csv file
     if os.path.exists('zillow.csv') and use_cache:
         print('Using cached csv')
-        return pd.read_csv('zillow.csv')
+    return pd.read_csv('zillow.csv')
     # If data is not local we will acquire it from SQL server
     print('Acquiring data from SQL db')
-    # Query to refine what data we want to grab 
-    # bedroomcnt, bathroomcnt, calculatedfinishedsquarefeet, taxvaluedollarcnt, yearbuilt, taxamount, fips from properties_2017 
-    # where propertylandusetypeid == 261 (Single Family Residential)
+
     query = '''
     SELECT bedroomcnt, bathroomcnt, calculatedfinishedsquarefeet, taxvaluedollarcnt, yearbuilt, taxamount, fips
     FROM properties_2017
@@ -56,22 +52,21 @@ def acquire_zillow_data(use_cache= True):
     # Returns the dataframe
     return df
 
-
 # Preparation and Splitting
 
 def remove_outliers(df, k, col_list):
     '''
-    Removes outliers from a list of columns in df, and returns the df.
+    remove outliers from a list of columns in a dataframe
+    and return that dataframe
     '''
     for col in col_list:
         q1, q3 = df[col].quantile([.25, .75]) # get quartiles
         iqr = q3 - q1 # calculate interquartile range
-        upper_bound = q3 + k * iqr # upper bound
-        lower_bound = q1 - k * iqr # lower bound
-        # Remove your outliers
+        upper_bound = q3 + k * iqr # get upper bound
+        lower_bound = q1 - k * iqr # get lower bound
+        # return dataframe without outliers
         df = df[(df[col] > lower_bound) & (df[col] < upper_bound)]
-    # Return df
-    return df
+        return df
 
 
 def prep_zillow(df):
