@@ -1,127 +1,105 @@
-# Wrangling Zillow Data
-
-# os needed to do local inspection of cache, to see if data exists locally
-import os
-# env.py contains our credentials to access the SQL server we are pulling the data from
-from env import host, user, password
-# Pandas is needed to perform SQL interaction
 import pandas as pd
 import numpy as np
-# Splitting function
+
 from sklearn.model_selection import train_test_split
-# Imputer
-from sklearn.impute import SimpleImputer
+
+from env import host, username, password
 
 
-# Acquire Functions
 
-def get_db_url(db_name, username=user, hostname=host, password=password):
-    '''
-    This function requires a database name (db_name) and uses the imported username,
-    hostname, and password from an env file. 
-    A url string is returned using the format required to connect to a SQL server.
-    '''
-    url = f'mysql+pymysql://{username}:{password}@{host}/{db_name}'
-    return url
+# Function for acquiring and prepping my student_grades df.
 
-def acquire_zillow_data(use_cache= True):
+def wrangle_grades():
     '''
-    Acquire the zillow data using SQL query and get_db_url() with credentials from env.py
+    Read student_grades csv file into a pandas DataFrame,
+    drop student_id column, replace whitespaces with NaN values,
+    drop any rows with Null values, convert all columns to int64,
+    return cleaned student grades DataFrame.
     '''
-    if os.path.exists('zillow.csv') and use_cache:
-        print('Using cached csv')
-    return pd.read_csv('zillow.csv')
-    # If data is not local we will acquire it from SQL server
-    print('Acquiring data from SQL db')
-
-    query = '''
-    SELECT bedroomcnt, bathroomcnt, calculatedfinishedsquarefeet, taxvaluedollarcnt, yearbuilt, taxamount, fips
-    FROM properties_2017
-    WHERE propertylandusetypeid = 261 OR propertylandusetypeid = 279 
-    '''
-    # Command line interaction with SQL server and assignment to dataframe (df)
-    df = pd.read_sql(query, get_db_url('zillow'))
-    # Ranaming columns
-    df = df.rename(columns = {'bedroomcnt': 'bedrooms',
-                              'bathroomcnt': 'bathrooms',
-                              'calculatedfinishedsquarefeet': 'area',
-                              'taxvaluedollarcnt': 'tax_value',
-                              'yearbuilt': 'year_built'})
-    # Creation of csv file
-    df.to_csv('zillow.csv', index=False)
-    # Returns the dataframe
+    # Acquire data from csv file.
+    grades = pd.read_csv('student_grades.csv')
+    
+    # Replace white space values with NaN values.
+    grades = grades.replace(r'^\s*$', np.nan, regex=True)
+    
+    # Drop all rows with NaN values.
+    df = grades.dropna()
+    
+    # Convert all columns to int64 data types.
+    df = df.astype('int')
+    
     return df
 
-# Preparation and Splitting
+# Generic helper function to provide connection url for Codeup database server.
 
-def remove_outliers(df, k, col_list):
+def get_db_url(db_name):
     '''
-    remove outliers from a list of columns in a dataframe
-    and return that dataframe
+    This function uses my env file to get the url to access the Codeup database.
+    It takes in a string identifying the database I want to connect to.
     '''
-    for col in col_list:
-        q1, q3 = df[col].quantile([.25, .75]) # get quartiles
-        iqr = q3 - q1 # calculate interquartile range
-        upper_bound = q3 + k * iqr # get upper bound
-        lower_bound = q1 - k * iqr # get lower bound
-        # return dataframe without outliers
-        df = df[(df[col] > lower_bound) & (df[col] < upper_bound)]
-        return df
+    return f"mysql+pymysql://{username}:{password}@{host}/{db_name}"
 
 
-def prep_zillow(df):
-    '''
-    Takes in a dataframe and prepares the data. 
-    Returns train, validate, and test dataframes after splitting the data.
-    '''
-    # Remove outliers
-    df = remove_outliers(df, 1.5, ['bedrooms', 'bathrooms', 'area', 'tax_value', 'taxamount'])
+# Generic function that takes in a database name and a query.
 
-    # Ensuring that the '0' remains for the fips column after converting to str type
-        # Convert to an int first to remove the trailing decimal
-    df.fips = df.fips.astype(int)
-    df.fips = df.fips.astype(str)
-    df.fips = '0' + df.fips
+def get_data_from_sql(str_db_name, query):
+    '''
+    This function takes in a string for the name of the database I want to connect to
+    and a query to obtain my data from the Codeup server and return a DataFrame.
+    '''
+    df = pd.read_sql(query, get_db_url(str_db_name))
+    return df
+
+
+# Mother function to acquire and prepare Telco data.
+
+def wrangle_telco():
+    """
+    Queries the telco_churn database
+    Returns a clean df with four columns:
+    customer_id(object), monthly_charges(float), tenure(int), total_charges(float)
+    """
+    query = """
+            SELECT 
+                customer_id, 
+                monthly_charges, 
+                tenure, 
+                total_charges
+            FROM customers
+            WHERE contract_type_id = 3;
+            """
+    df = get_data_from_sql('telco_churn', query)
     
-    # Split our df in to train, validate, and test splits (3 df)
-    train, validate, test = zillow_split(df)
+    # Replace any tenures of 0 with 1
+    df.tenure = df.tenure.replace(0, 1)
+    
+    # Replace the blank total_charges with the monthly_charge for tenure == 1
+    df.total_charges = np.where(df.total_charges==' ', df.monthly_charges, df.total_charges) 
+    
+    # Convert total_charges to a float.
+    df.total_charges = df.total_charges.astype(float)
+    
+    return df
 
-    # Impute year built using mode
-    imputer = SimpleImputer(strategy='median')
-    # Fit on train df
-    imputer.fit(train[['year_built']])
-    # Apply imputer to your splits
-    train[['year_built']] = imputer.transform(train[['year_built']])
-    validate[['year_built']] = imputer.transform(validate[['year_built']])
-    test[['year_built']] = imputer.transform(test[['year_built']])
+# Generic splitting function for continuous target.
 
-    # Return train, validate, test splits
-    return train, validate, test
-
-
-def zillow_split(df):
+def split_continuous(df):
     '''
-    This function takes in a dataframe and returns train, validate, test splits. (dataframes)
-    An initial 20% of data is split to place as 'test'
-    A second split is performed (on the remaining 80%) between train and validate (70/30)
+    Takes in a df
+    Returns train, validate, and test DataFrames
     '''
-    # First split with 20% going to test
-    train_validate, test = train_test_split(df, train_size = .8, 
-                                                 random_state = 123)
-    # Second split with 70% of remainder going to train, 30% to validate
-    train, validate = train_test_split(train_validate, train_size = .7,
-                                                random_state=123)
-    # Return train, validate, test (56%, 24%, 20% splits of original df)
-    return train, validate, test
+    # Create train_validate and test datasets
+    train_validate, test = train_test_split(df, 
+                                        test_size=.2, 
+                                        random_state=123)
+    # Create train and validate datsets
+    train, validate = train_test_split(train_validate, 
+                                   test_size=.3, 
+                                   random_state=123)
 
+    # Take a look at your split datasets
 
-def wrangle_zillow():
-    '''
-    Using acquire and preparation functions to 'wrangle' the zillow data. Returns train, validate, and test dataframes.
-    '''
-    # Acquire the data
-    df = acquire_zillow_data()
-    # Prep the data (returns train, validate, test)
-    train, validate, test = prep_zillow(df)
-    # Return split dataframes
+    print(f'train -> {train.shape}')
+    print(f'validate -> {validate.shape}')
+    print(f'test -> {test.shape}')
     return train, validate, test
