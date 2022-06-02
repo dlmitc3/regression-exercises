@@ -8,6 +8,17 @@ from sklearn.model_selection import train_test_split
 import warnings
 warnings.filterwarnings("ignore")
 
+# ****************************  connection **********************************************
+
+# Create helper function to get the necessary connection url.
+def get_connection(db_name):
+    '''
+    This function uses my info from my env file to
+    create a connection url to access the Codeup db.
+    '''
+    from env import host, username, password
+    return f'mysql+pymysql://{username}:{password}@{host}/{db_name}'
+
 # *****************************************************************************************************************
 # Not my function I found this and thought it would help with my analysis
 #******************************************************************************************************************
@@ -99,7 +110,7 @@ def get_new_zillow():
 #acquire data main function 
 def get_zillow():
     '''
-    This function reads in telco_churn data from Codeup database, writes data to
+    This function reads in zillow data from Codeup database, writes data to
     a csv file if a local file does not exist, and returns a df.
     '''
     if os.path.isfile('zillow.csv'):
