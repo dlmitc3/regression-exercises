@@ -146,7 +146,7 @@ def split_data(df):
     print(f'test -> {test.shape}')                                  
     return train, validate, test
 
-def split_Xy (train, validate, test, target):
+def split_Xy (train, validate, test, df.taxvaluedollarcnt):
     '''
     This function takes in three dataframe (train, validate, test) and a target  and splits each of the 3 samples
     into a dataframe with independent variables and a series with the dependent, or target variable.
@@ -157,14 +157,14 @@ def split_Xy (train, validate, test, target):
     '''
     
     #split train
-    X_train = train.drop(columns= [target])
-    y_train= train[target]
+    X_train = train.drop(columns= [df.taxvaluedollarcnt])
+    y_train= train[df.taxvaluedollarcnt]
     #split validate
-    X_validate = validate.drop(columns= [target])
-    y_validate= validate[target]
+    X_validate = validate.drop(columns= [df.taxvaluedollarcnt])
+    y_validate= validate[df.taxvaluedollarcnt]
     #split validate
-    X_test = test.drop(columns= [target])
-    y_test= test[target]
+    X_test = test.drop(columns= [df.taxvaluedollarcnt])
+    y_test= test[df.taxvaluedollarcnt]
 
     print(f'X_train -> {X_train.shape}               y_train->{y_train.shape}')
     print(f'X_validate -> {X_validate.shape}         y_validate->{y_validate.shape} ')        
@@ -218,3 +218,25 @@ def miss_dup_values(df):
     return mis_val_table_ren_columns
 
 
+# Generic splitting function for continuous target.
+
+def split_continuous(df):
+    '''
+    Takes in a df
+    Returns train, validate, and test DataFrames
+    '''
+    # Create train_validate and test datasets
+    train_validate, test = train_test_split(df, 
+                                        test_size=.2, 
+                                        random_state=123)
+    # Create train and validate datsets
+    train, validate = train_test_split(train_validate, 
+                                   test_size=.3, 
+                                   random_state=123)
+
+    # Take a look at your split datasets
+
+    print(f'train -> {train.shape}')
+    print(f'validate -> {validate.shape}')
+    print(f'test -> {test.shape}')
+    return train, validate, test
